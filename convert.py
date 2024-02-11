@@ -457,6 +457,6 @@ assert opt.test_path.endswith('.ply'), '--test_path must be a .ply file saved by
 
 converter = Converter(opt).cuda()
 converter.fit_nerf()
-converter.fit_mesh()
+converter.fit_mesh(iters=opt.mesh_iters)
 converter.fit_mesh_uv()
-converter.export_mesh(opt.test_path.replace('.ply', '.glb'))
+converter.export_mesh(opt.test_path.replace('.ply', '.obj'))

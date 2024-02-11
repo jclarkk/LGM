@@ -88,7 +88,7 @@ def process(opt: Options, path):
     if image.shape[-1] == 4:
         image = image[..., :3] * image[..., 3:4] + (1 - image[..., 3:4])
 
-    mv_image = pipe('', image, guidance_scale=5.0, num_inference_steps=30, elevation=0)
+    mv_image = pipe('', image, guidance_scale=5.0, num_inference_steps=90, elevation=0)
     mv_image = np.stack([mv_image[1], mv_image[2], mv_image[3], mv_image[0]], axis=0) # [4, 256, 256, 3], float32
 
     # generate gaussians
@@ -110,42 +110,43 @@ def process(opt: Options, path):
         images = []
         elevation = 0
 
-        if opt.fancy_video:
+        if opt.save_video:
+            if opt.fancy_video:
 
-            azimuth = np.arange(0, 720, 4, dtype=np.int32)
-            for azi in tqdm.tqdm(azimuth):
-                
-                cam_poses = torch.from_numpy(orbit_camera(elevation, azi, radius=opt.cam_radius, opengl=True)).unsqueeze(0).to(device)
+                azimuth = np.arange(0, 720, 4, dtype=np.int32)
+                for azi in tqdm.tqdm(azimuth):
 
-                cam_poses[:, :3, 1:3] *= -1 # invert up & forward direction
-                
-                # cameras needed by gaussian rasterizer
-                cam_view = torch.inverse(cam_poses).transpose(1, 2) # [V, 4, 4]
-                cam_view_proj = cam_view @ proj_matrix # [V, 4, 4]
-                cam_pos = - cam_poses[:, :3, 3] # [V, 3]
+                    cam_poses = torch.from_numpy(orbit_camera(elevation, azi, radius=opt.cam_radius, opengl=True)).unsqueeze(0).to(device)
 
-                scale = min(azi / 360, 1)
+                    cam_poses[:, :3, 1:3] *= -1 # invert up & forward direction
 
-                image = model.gs.render(gaussians, cam_view.unsqueeze(0), cam_view_proj.unsqueeze(0), cam_pos.unsqueeze(0), scale_modifier=scale)['image']
-                images.append((image.squeeze(1).permute(0,2,3,1).contiguous().float().cpu().numpy() * 255).astype(np.uint8))
-        else:
-            azimuth = np.arange(0, 360, 2, dtype=np.int32)
-            for azi in tqdm.tqdm(azimuth):
-                
-                cam_poses = torch.from_numpy(orbit_camera(elevation, azi, radius=opt.cam_radius, opengl=True)).unsqueeze(0).to(device)
+                    # cameras needed by gaussian rasterizer
+                    cam_view = torch.inverse(cam_poses).transpose(1, 2) # [V, 4, 4]
+                    cam_view_proj = cam_view @ proj_matrix # [V, 4, 4]
+                    cam_pos = - cam_poses[:, :3, 3] # [V, 3]
 
-                cam_poses[:, :3, 1:3] *= -1 # invert up & forward direction
-                
-                # cameras needed by gaussian rasterizer
-                cam_view = torch.inverse(cam_poses).transpose(1, 2) # [V, 4, 4]
-                cam_view_proj = cam_view @ proj_matrix # [V, 4, 4]
-                cam_pos = - cam_poses[:, :3, 3] # [V, 3]
+                    scale = min(azi / 360, 1)
 
-                image = model.gs.render(gaussians, cam_view.unsqueeze(0), cam_view_proj.unsqueeze(0), cam_pos.unsqueeze(0), scale_modifier=1)['image']
-                images.append((image.squeeze(1).permute(0,2,3,1).contiguous().float().cpu().numpy() * 255).astype(np.uint8))
+                    image = model.gs.render(gaussians, cam_view.unsqueeze(0), cam_view_proj.unsqueeze(0), cam_pos.unsqueeze(0), scale_modifier=scale)['image']
+                    images.append((image.squeeze(1).permute(0,2,3,1).contiguous().float().cpu().numpy() * 255).astype(np.uint8))
+            else:
+                azimuth = np.arange(0, 360, 2, dtype=np.int32)
+                for azi in tqdm.tqdm(azimuth):
 
-        images = np.concatenate(images, axis=0)
-        imageio.mimwrite(os.path.join(opt.workspace, name + '.mp4'), images, fps=30)
+                    cam_poses = torch.from_numpy(orbit_camera(elevation, azi, radius=opt.cam_radius, opengl=True)).unsqueeze(0).to(device)
+
+                    cam_poses[:, :3, 1:3] *= -1 # invert up & forward direction
+
+                    # cameras needed by gaussian rasterizer
+                    cam_view = torch.inverse(cam_poses).transpose(1, 2) # [V, 4, 4]
+                    cam_view_proj = cam_view @ proj_matrix # [V, 4, 4]
+                    cam_pos = - cam_poses[:, :3, 3] # [V, 3]
+
+                    image = model.gs.render(gaussians, cam_view.unsqueeze(0), cam_view_proj.unsqueeze(0), cam_pos.unsqueeze(0), scale_modifier=1)['image']
+                    images.append((image.squeeze(1).permute(0,2,3,1).contiguous().float().cpu().numpy() * 255).astype(np.uint8))
+
+            images = np.concatenate(images, axis=0)
+            imageio.mimwrite(os.path.join(opt.workspace, name + '.mp4'), images, fps=30)
 
 
 assert opt.test_path is not None

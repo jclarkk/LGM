@@ -70,6 +70,12 @@ class Options:
     force_cuda_rast: bool = False
     # render fancy video with gaussian scaling effect
     fancy_video: bool = False
+    # Save video
+    save_video: bool = True
+
+    # Mesh settings
+    mesh_iters: int = 2048
+
     
 
 # all the default settings
