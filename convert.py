@@ -323,7 +323,7 @@ class Converter(nn.Module):
             loss_lap = laplacian_smooth_loss(self.v + self.deform, self.f)
             loss_normal = normal_consistency(self.v + self.deform, self.f)
             loss_offsets = (self.deform ** 2).sum(-1).mean()
-            loss = loss_mse + 0.001 * loss_normal + 0.1 * loss_offsets * loss_lap * 0.1
+            loss = loss_mse + 0.001 * loss_normal + 0.1 * loss_offsets * loss_lap * 0.01
 
             loss.backward()
 
@@ -339,11 +339,6 @@ class Converter(nn.Module):
                     vertices, triangles = decimate_mesh(vertices, triangles, decimate_target, optimalplacement=False)
                 self.v = torch.from_numpy(vertices).contiguous().float().to(self.device)
                 self.f = torch.from_numpy(triangles).contiguous().int().to(self.device)
-
-                # Laplacian smoothing
-                smooth_vertices = pv.PolyData(self.v.detach().cpu().numpy())
-                smooth_vertices = smooth_vertices.smooth_taubin(feature_smoothing=True, n_iter=20)
-                self.v = torch.from_numpy(smooth_vertices.points).contiguous().float().to(self.device)
 
                 self.deform = nn.Parameter(torch.zeros_like(self.v)).to(self.device)
                 lr_factor *= 0.5
