@@ -1,5 +1,4 @@
-
-import os
+import matplotlib.pyplot as plt
 import tyro
 import tqdm
 import numpy as np
@@ -14,7 +13,7 @@ import mcubes
 import nerfacc
 import nvdiffrast.torch as dr
 
-import kiui
+import pyvista as pv
 from kiui.mesh import Mesh
 from kiui.mesh_utils import clean_mesh, decimate_mesh
 from kiui.mesh_utils import laplacian_smooth_loss, normal_consistency
@@ -87,7 +86,7 @@ class Converter(nn.Module):
         self.step = 0
         self.render_step_size = 5e-3
         self.aabb = torch.tensor([-1.0, -1.0, -1.0, 1.0, 1.0, 1.0], device=self.device)
-        self.estimator = nerfacc.OccGridEstimator(roi_aabb=self.aabb, resolution=64, levels=1)
+        self.estimator = nerfacc.OccGridEstimator(roi_aabb=self.aabb, resolution=128, levels=1)
 
         self.encoder_density = GridEncoder(num_levels=12) # VMEncoder(output_dim=16, mode='sum')
         self.encoder = GridEncoder(num_levels=12)
@@ -260,7 +259,7 @@ class Converter(nn.Module):
 
         return image, alpha
 
-    def fit_mesh(self, iters=2048, resolution=512, decimate_target=5e4):
+    def fit_mesh(self, iters=2048, resolution=512, decimate_target=2e4):
 
         self.opt.output_size = resolution
 
@@ -348,6 +347,12 @@ class Converter(nn.Module):
                     {'params': self.deform, 'lr': 1e-4},
                 ])
 
+            # Laplacian smoothing, apply periodically after remesh.
+            if i > 0 and i % 512 == 0:
+                smooth_vertices = pv.PolyData(self.v.detach().cpu().numpy())
+                smooth_vertices = smooth_vertices.smooth(n_iter=100)
+                self.v = torch.from_numpy(smooth_vertices.points).contiguous().float().to(self.device)
+
             pbar.set_description(f"MSE = {loss_mse.item():.6f}")
         
         # last clean
@@ -394,15 +399,7 @@ class Converter(nn.Module):
 
             xyzs = xyzs[mask] # [M, 3]
 
-            # batched inference to avoid OOM
-            batch = []
-            head = 0
-            while head < xyzs.shape[0]:
-                tail = min(head + 640000, xyzs.shape[0])
-                batch.append(torch.sigmoid(self.mlp(self.encoder(xyzs[head:tail]))).float())
-                head += 640000
-
-            albedo[mask] = torch.cat(batch, dim=0)
+            albedo[mask] = torch.sigmoid(self.mlp(self.encoder(xyzs.detach())).float())
         
         albedo = albedo.view(h, w, -1)
         mask = mask.view(h, w)
