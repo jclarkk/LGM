@@ -339,6 +339,12 @@ class Converter(nn.Module):
                     vertices, triangles = decimate_mesh(vertices, triangles, decimate_target, optimalplacement=False)
                 self.v = torch.from_numpy(vertices).contiguous().float().to(self.device)
                 self.f = torch.from_numpy(triangles).contiguous().int().to(self.device)
+
+                # Laplacian smoothing
+                smooth_vertices = pv.PolyData(self.v.detach().cpu().numpy())
+                smooth_vertices = smooth_vertices.smooth_taubin(feature_smoothing=True, n_iter=20)
+                self.v = torch.from_numpy(smooth_vertices.points).contiguous().float().to(self.device)
+
                 self.deform = nn.Parameter(torch.zeros_like(self.v)).to(self.device)
                 lr_factor *= 0.5
                 optimizer = torch.optim.Adam([
@@ -346,12 +352,6 @@ class Converter(nn.Module):
                     {'params': self.mlp.parameters(), 'lr': 1e-3 * lr_factor},
                     {'params': self.deform, 'lr': 1e-4},
                 ])
-
-            # Laplacian smoothing, apply periodically after remesh.
-            if i > 0 and i % 512 == 0:
-                smooth_vertices = pv.PolyData(self.v.detach().cpu().numpy())
-                smooth_vertices = smooth_vertices.smooth(n_iter=100)
-                self.v = torch.from_numpy(smooth_vertices.points).contiguous().float().to(self.device)
 
             pbar.set_description(f"MSE = {loss_mse.item():.6f}")
         
