@@ -7,11 +7,17 @@ This is the official implementation of *LGM: Large Multi-View Gaussian Model for
 
 https://github.com/3DTopia/LGM/assets/25863658/cf64e489-29f3-4935-adba-e393a24c26e8
 
+### Replicate Demo:
+* gaussians: [demo](https://replicate.com/camenduru/lgm) | [code](https://github.com/camenduru/LGM-replicate)
+* mesh: [demo](https://replicate.com/camenduru/lgm-ply-to-glb) | [code](https://github.com/camenduru/LGM-ply-to-glb-replicate)
+
+Thanks [@camenduru](https://github.com/camenduru)!
+
 ### Install
 
 ```bash
 # xformers is required! please refer to https://github.com/facebookresearch/xformers for details.
-# for example, we use torch 2.1.0 + cuda 18.1
+# for example, we use torch 2.1.0 + cuda 11.8
 pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu118
 pip install -U xformers --index-url https://download.pytorch.org/whl/cu118
 
@@ -68,6 +74,8 @@ For more options, please check [options](./core/options.py).
 Since the dataset used in our training is based on AWS, it cannot be directly used for training in a new environment.
 We provide the necessary training code framework, please check and modify the [dataset](./core/provider_objaverse.py) implementation!
 
+We also provide the **~80K subset of [Objaverse](https://objaverse.allenai.org/objaverse-1.0)** used to train LGM in [objaverse_filter](https://github.com/ashawkey/objaverse_filter).
+
 ```bash
 # debug training
 accelerate launch --config_file acc_configs/gpu1.yaml main.py big --workspace workspace_debug
@@ -83,6 +91,7 @@ This work is built on many amazing research works and open-source projects, than
 - [gaussian-splatting](https://github.com/graphdeco-inria/gaussian-splatting) and [diff-gaussian-rasterization](https://github.com/graphdeco-inria/diff-gaussian-rasterization)
 - [nvdiffrast](https://github.com/NVlabs/nvdiffrast)
 - [dearpygui](https://github.com/hoffstadt/DearPyGui)
+- [tyro](https://github.com/brentyi/tyro)
 
 ### Citation
 
