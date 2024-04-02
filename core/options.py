@@ -72,9 +72,14 @@ class Options:
     fancy_video: bool = False
     # Save video
     save_video: bool = True
+    # Debug with visualization
+    debug: bool = False
 
     # Mesh settings
     mesh_iters: int = 2048
+
+    prompt:str = None
+    prompt_neg: str = 'ugly, blurry, pixelated obscure, unnatural colors, poor lighting, dull, unclear, cropped, lowres, low quality, artifacts, duplicate'
 
     
 
