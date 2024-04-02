@@ -1,4 +1,3 @@
-import glob
 import numpy as np
 import os
 import rembg
@@ -78,12 +77,14 @@ def process(opt: Options, prompt, prompt_neg=opt.prompt_neg, input_elevation=0, 
         mv_image.append(image)
 
     # generate gaussians
-    input_image = torch.from_numpy(mv_image).permute(0, 3, 1, 2).float().to(device)  # [4, 3, 256, 256]
-    input_image = F.interpolate(input_image, size=(opt.input_size, opt.input_size), mode='bilinear',
-                                align_corners=False)
+    # generate gaussians
+    input_image = np.stack([mv_image[1], mv_image[2], mv_image[3], mv_image[0]], axis=0) # [4, 256, 256, 3], float32
+    input_image = torch.from_numpy(input_image).permute(0, 3, 1, 2).float().to(device) # [4, 3, 256, 256]
+    input_image = F.interpolate(input_image, size=(opt.input_size, opt.input_size), mode='bilinear', align_corners=False)
     input_image = TF.normalize(input_image, IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD)
 
-    input_image = torch.cat([input_image, rays_embeddings], dim=1).unsqueeze(0)  # [1, 4, 9, H, W]
+    rays_embeddings = model.prepare_default_rays(device, elevation=input_elevation)
+    input_image = torch.cat([input_image, rays_embeddings], dim=1).unsqueeze(0) # [1, 4, 9, H, W]
 
     with torch.no_grad():
         with torch.autocast(device_type='cuda', dtype=torch.float16):
